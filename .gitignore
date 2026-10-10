@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+*/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment & Secrets (NEVER COMMIT)
+.env
+.env.*
+!.env.example
+*.env
+server/.env
+client/.env
+
+# Production Builds
+dist/
+dist-ssr/
+build/
+*.local
+
+# Editor & OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.vscode/*
+!.vscode/extensions.json
+
+# Temporary logs & test outputs
+logs/
+*.log

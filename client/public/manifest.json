@@ -1,0 +1,19 @@
+{
+  "short_name": "GameConnect",
+  "name": "GameConnect - Find Your Squad. Dominate Together.",
+  "description": "Next-Gen real-time gaming social network, LFG squad matchmaking, scrim orchestration, and WebRTC voice chat.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "display": "standalone",
+  "orientation": "any",
+  "categories": ["games", "social", "entertainment"]
+}
