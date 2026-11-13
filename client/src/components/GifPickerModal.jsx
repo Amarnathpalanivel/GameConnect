@@ -26,7 +26,7 @@ export default function GifPickerModal({ isOpen, onClose, onSelectGif }) {
       setLoading(true);
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get("http://localhost:5000/api/media/gifs", {
+        const res = await axios.get("/api/media/gifs", {
           params: { q: search, category: selectedCategory },
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });

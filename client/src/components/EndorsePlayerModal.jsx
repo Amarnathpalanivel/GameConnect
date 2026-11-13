@@ -45,7 +45,7 @@ export default function EndorsePlayerModal({ isOpen, onClose, targetUser, onEndo
     try {
       const token = localStorage.getItem("token");
       const res = await axios.post(
-        `http://localhost:5000/api/auth/users/${targetUser._id}/endorse`,
+        `/api/auth/users/${targetUser._id}/endorse`,
         { category: selectedCategory },
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );

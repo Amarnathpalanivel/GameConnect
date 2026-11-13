@@ -6,10 +6,23 @@ export const VoiceContext = createContext();
 
 const ICE_SERVERS = {
   iceServers: [
+    // STUN servers for NAT traversal & candidate discovery
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
     { urls: "stun:stun2.l.google.com:19302" },
+    // Metered.ca TURN relay fallback for strict firewalls & symmetric NATs
+    {
+      urls: [
+        import.meta.env.VITE_TURN_URL || "turn:openrelay.metered.ca:80",
+        "turn:openrelay.metered.ca:443",
+        "turn:openrelay.metered.ca:443?transport=tcp",
+        "turns:openrelay.metered.ca:443?transport=tcp",
+      ],
+      username: import.meta.env.VITE_TURN_USERNAME || "openrelayproject",
+      credential: import.meta.env.VITE_TURN_CREDENTIAL || "openrelayproject",
+    },
   ],
+  iceCandidatePoolSize: 10,
 };
 
 export const VoiceProvider = ({ children }) => {

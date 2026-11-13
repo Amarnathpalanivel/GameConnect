@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 dotenv.config(); // fallback to root .env if present
 import cors from "cors";
+import helmet from "helmet";
 import http from "http";
 import { connectDB } from "./lib/db.js"
 import userRouter from "./routes/userRoutes.js";
@@ -22,8 +23,29 @@ import mediaRouter from "./routes/mediaRoutes.js";
 import gameRouter from "./routes/gameRoutes.js";
 import Party from "./models/Party.js";
 import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { createClient } from "redis";
 
 
+
+// Allowed Origins for CORS lockdown
+const allowedOrigins = [
+    "https://gameconnect.app",
+    ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL] : [])
+];
+
+const corsOptions = {
+    origin: (origin, callback) => {
+        // Enforce strict origin checking - reject requests with missing or unauthorized origin headers
+        if (origin && allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error("Not allowed by CORS: Origin header missing or unauthorized"));
+        }
+    },
+    credentials: true,
+    optionsSuccessStatus: 200,
+};
 
 //Create Express app and HTTP server
 const app = express();
@@ -31,8 +53,28 @@ const server = http.createServer(app)
 
 //Initialize Socket.io server
 export const io = new Server(server, {
-    cors: { origin: "*" }
+    cors: {
+        origin: allowedOrigins,
+        credentials: true
+    }
 });
+
+// Configure Redis Adapter for scaling across multiple backend instances
+if (process.env.REDIS_URL) {
+    try {
+        const pubClient = createClient({ url: process.env.REDIS_URL });
+        const subClient = pubClient.duplicate();
+
+        pubClient.on("error", (err) => console.error("Redis PubClient Error:", err.message));
+        subClient.on("error", (err) => console.error("Redis SubClient Error:", err.message));
+
+        await Promise.all([pubClient.connect(), subClient.connect()]);
+        io.adapter(createAdapter(pubClient, subClient));
+        console.log("Redis Adapter connected: Socket.IO events synchronized across all instances");
+    } catch (err) {
+        console.warn("Could not connect to Redis server, fallback to in-memory adapter:", err.message);
+    }
+}
 
 //Store online users: { [userId: string]: Set<string> }
 export const userSocketMap = {};
@@ -301,10 +343,11 @@ io.on("connection", (socket) => {
     });
 });
 
-//Middelware setup
+//Security and Middleware setup
+app.use(helmet());
+app.use(cors(corsOptions));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
-app.use(cors());
 
 //Route setup
 app.use("/api/status",   (req, res) => res.send("Server is live"));
@@ -318,6 +361,18 @@ app.use("/api/notifications", notificationRouter);
 app.use("/api/moderation",    moderationRouter);
 app.use("/api/media",         mediaRouter);
 app.use("/api/games",         gameRouter);
+
+// Error handling middleware (CORS rejections & general errors)
+app.use((err, req, res, next) => {
+    if (err && err.message && err.message.includes("Not allowed by CORS")) {
+        return res.status(403).json({
+            success: false,
+            message: "Blocked by CORS policy: Origin missing or unauthorized."
+        });
+    }
+    console.error(err);
+    res.status(500).json({ success: false, message: err.message || "Internal Server Error" });
+});
 
 // Connect to MongoDB
 await connectDB();

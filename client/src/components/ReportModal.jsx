@@ -26,7 +26,7 @@ export default function ReportModal({ isOpen, onClose, targetUser, targetType = 
     try {
       const token = localStorage.getItem("token");
       const res = await axios.post(
-        "http://localhost:5000/api/moderation/report",
+        "/api/moderation/report",
         {
           reportedUserId: targetUser._id,
           targetType,

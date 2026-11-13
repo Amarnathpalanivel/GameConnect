@@ -16,11 +16,11 @@ export default function ModerationModal({ isOpen, onClose }) {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const [reportsRes, statsRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/moderation/reports", {
+        axios.get("/api/moderation/reports", {
           params: { status: filter === "all" ? undefined : filter },
           headers,
         }),
-        axios.get("http://localhost:5000/api/moderation/stats", { headers }),
+        axios.get("/api/moderation/stats", { headers }),
       ]);
 
       if (reportsRes.data?.success) setReports(reportsRes.data.reports || []);
@@ -42,7 +42,7 @@ export default function ModerationModal({ isOpen, onClose }) {
     try {
       const token = localStorage.getItem("token");
       const res = await axios.put(
-        `http://localhost:5000/api/moderation/reports/${reportId}/action`,
+        `/api/moderation/reports/${reportId}/action`,
         { action, adminNotes: `Action executed via safety console: ${action}` },
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );
