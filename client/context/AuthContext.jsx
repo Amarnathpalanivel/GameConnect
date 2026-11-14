@@ -120,6 +120,40 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Forgot Password - request 6-digit recovery code
+    const forgotPassword = async (email) => {
+        try {
+            const { data } = await axios.post("/api/auth/forgot-password", { email });
+            if (data.success) {
+                toast.success(data.message);
+                return { success: true, email: data.email };
+            } else {
+                toast.error(data.message);
+                return { success: false, message: data.message };
+            }
+        } catch (error) {
+            toast.error(error.message);
+            return { success: false, message: error.message };
+        }
+    };
+
+    // Reset Password - submit OTP and new password
+    const resetPassword = async (email, otp, newPassword) => {
+        try {
+            const { data } = await axios.post("/api/auth/reset-password", { email, otp, newPassword });
+            if (data.success) {
+                toast.success(data.message);
+                return { success: true, message: data.message };
+            } else {
+                toast.error(data.message);
+                return { success: false, message: data.message };
+            }
+        } catch (error) {
+            toast.error(error.message);
+            return { success: false, message: error.message };
+        }
+    };
+
     // Logout
     const logout = async () => {
         localStorage.removeItem("token");
@@ -234,6 +268,7 @@ export const AuthProvider = ({ children }) => {
         pendingRequests, setPendingRequests,
         login, logout, updateProfile,
         verifyOTP, resendOTP,
+        forgotPassword, resetPassword,
         sendFriendRequest, acceptFriendRequest, declineFriendRequest,
         blockUser, reportUser,
     };

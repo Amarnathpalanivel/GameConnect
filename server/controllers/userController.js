@@ -4,7 +4,7 @@ import Notification from "../models/Notification.js";
 import bcrypt from 'bcryptjs';
 import { generateToken } from "../lib/utils.js"
 import cloudinary from "../lib/cloudinary.js"
-import { sendOTPEmail } from "../lib/nodemailer.js"
+import { sendOTPEmail, sendPasswordResetEmail } from "../lib/nodemailer.js"
 import { io, getUserSocketIds } from "../server.js";
 
 // Helper: generate a unique gamer tag  e.g. "NightWolf#2847"
@@ -215,6 +215,84 @@ export const login = async (req, res) => {
         res.json({ success: false, message: error.message })
     }
 }
+
+// Controller to initiate forgot password flow (sends 6-digit OTP)
+export const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.json({ success: false, message: "Email address is required" });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail });
+
+        if (!user) {
+            return res.json({ success: false, message: "No account found with this email address" });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        user.otp = otp;
+        user.otpExpires = otpExpires;
+        await user.save();
+
+        await sendPasswordResetEmail(normalizedEmail, otp);
+
+        res.json({
+            success: true,
+            email: normalizedEmail,
+            message: "Password reset code sent to your email",
+        });
+    } catch (error) {
+        console.error("Forgot Password Error:", error.message);
+        res.json({ success: false, message: error.message });
+    }
+};
+
+// Controller to verify OTP and set a new password
+export const resetPassword = async (req, res) => {
+    try {
+        const { email, otp, newPassword } = req.body;
+        if (!email || !otp || !newPassword) {
+            return res.json({ success: false, message: "Email, reset code, and new password are required" });
+        }
+
+        if (newPassword.length < 6) {
+            return res.json({ success: false, message: "New password must be at least 6 characters" });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail });
+
+        if (!user) {
+            return res.json({ success: false, message: "User account not found" });
+        }
+
+        if (user.otp !== otp.toString().trim()) {
+            return res.json({ success: false, message: "Invalid verification code" });
+        }
+
+        if (new Date() > new Date(user.otpExpires)) {
+            return res.json({ success: false, message: "Verification code has expired. Please request a new one." });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+        user.otp = undefined;
+        user.otpExpires = undefined;
+        await user.save();
+
+        res.json({
+            success: true,
+            message: "Password reset successfully! You can now log in with your new password.",
+        });
+    } catch (error) {
+        console.error("Reset Password Error:", error.message);
+        res.json({ success: false, message: error.message });
+    }
+};
 
 //Controller to check if user is authenticated
 export const checkAuth = (req, res) => {

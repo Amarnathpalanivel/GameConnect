@@ -1,6 +1,7 @@
 import express from "express";
 import {
     checkAuth, login, signup, updateProfile, verifyOTP, resendOTP, getPublicProfile,
+    forgotPassword, resetPassword,
     getBehavioralMatches, updateCoachProfile, getCoaches, bookCoachSession, reviewCoach,
     endorsePlayer, getPlayerReputation, checkUserAchievements
 } from "../controllers/userController.js";
@@ -12,6 +13,8 @@ userRouter.post("/signup", signup);
 userRouter.post("/verify-otp", verifyOTP);
 userRouter.post("/resend-otp", resendOTP);
 userRouter.post("/login", login);
+userRouter.post("/forgot-password", forgotPassword);
+userRouter.post("/reset-password", resetPassword);
 userRouter.put("/update-profile", protectRoute, updateProfile);
 userRouter.get("/check", protectRoute, checkAuth);
 userRouter.get("/profile/:gamerTag", protectRoute, getPublicProfile);

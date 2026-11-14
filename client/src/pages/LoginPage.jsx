@@ -26,7 +26,16 @@ const LoginPage = () => {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { login, verifyOTP, resendOTP } = useContext(AuthContext);
+  // Forgot Password states
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [forgotStep, setForgotStep] = useState(1); // 1 = enter email, 2 = enter OTP & new password
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotOtp, setForgotOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
+  const { login, verifyOTP, resendOTP, forgotPassword, resetPassword } = useContext(AuthContext);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -81,11 +90,66 @@ const LoginPage = () => {
     if (res?.success) setResendCooldown(60);
   };
 
+  const handleRequestResetCode = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) {
+      toast.error("Please enter your email address");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const res = await forgotPassword(forgotEmail.trim());
+      if (res?.success) {
+        setForgotStep(2);
+        setResendCooldown(60);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!forgotOtp.trim() || forgotOtp.trim().length !== 6) {
+      toast.error("Please enter the 6-digit code");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("New password must be at least 6 characters");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const res = await resetPassword(forgotEmail.trim(), forgotOtp.trim(), newPassword);
+      if (res?.success) {
+        setIsForgotPassword(false);
+        setForgotStep(1);
+        setCurrState("Login");
+        setEmail(forgotEmail);
+        setPassword("");
+        setForgotOtp("");
+        setNewPassword("");
+        setConfirmPassword("");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const resetForm = (state) => {
     setCurrState(state);
     setIsDataSubmitted(false);
     setIsVerifyingOTP(false);
+    setIsForgotPassword(false);
+    setForgotStep(1);
     setOtp("");
+    setForgotOtp("");
+    setNewPassword("");
+    setConfirmPassword("");
     setFullName(""); setEmail(""); setPassword(""); setBio("");
   };
 
@@ -180,6 +244,190 @@ const LoginPage = () => {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+
+  /* ── Forgot Password flow ───────────────────────────────────────────────── */
+  if (isForgotPassword) return (
+    <div className="w-full h-full overflow-y-auto flex items-center justify-center gap-8 sm:justify-evenly max-sm:flex-col p-4">
+      <HeroPanel />
+      <div className="w-full max-w-md animate-scale-in">
+        {forgotStep === 1 ? (
+          /* Step 1: Request Recovery Code */
+          <form
+            onSubmit={handleRequestResetCode}
+            className="glass-card rounded-2xl p-8 flex flex-col gap-5 shadow-2xl"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold gradient-text">Reset Password</h2>
+                <p className="text-xs text-sky-300/50 mt-0.5">Recover your gaming account</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsForgotPassword(false)}
+                className="w-8 h-8 rounded-full bg-sky-900/40 hover:bg-sky-900/70 flex items-center justify-center text-sky-300/70 hover:text-sky-200 cursor-pointer transition-all"
+                title="Back to login"
+              >
+                ‹
+              </button>
+            </div>
+
+            <p className="text-xs text-sky-300/70 leading-relaxed">
+              Enter your registered email address below. We'll send a 6-digit recovery code to reset your password.
+            </p>
+
+            <div>
+              <label className="text-xs text-sky-300/60 mb-1.5 block font-medium">Email Address</label>
+              <input
+                value={forgotEmail}
+                onChange={e => setForgotEmail(e.target.value)}
+                type="email"
+                placeholder="you@example.com"
+                required
+                autoFocus
+                className={inputCls}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting || !forgotEmail}
+              className="py-3 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold text-sm cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-sky-600/25 press-active transition-all"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  Sending Code...
+                </span>
+              ) : "Send Recovery Code ✉️"}
+            </button>
+
+            <div className="text-center pt-2 border-t border-sky-900/30">
+              <button
+                type="button"
+                onClick={() => setIsForgotPassword(false)}
+                className="text-xs text-sky-400 hover:text-sky-300 font-medium cursor-pointer transition-colors"
+              >
+                ← Back to Login
+              </button>
+            </div>
+          </form>
+        ) : (
+          /* Step 2: Enter Code & New Password */
+          <form
+            onSubmit={handleResetPasswordSubmit}
+            className="glass-card rounded-2xl p-8 flex flex-col gap-5 shadow-2xl"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold gradient-text">New Password</h2>
+                <p className="text-xs text-sky-300/50 mt-0.5">Enter recovery code and new password</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setForgotStep(1)}
+                className="w-8 h-8 rounded-full bg-sky-900/40 hover:bg-sky-900/70 flex items-center justify-center text-sky-300/70 hover:text-sky-200 cursor-pointer transition-all"
+                title="Back"
+              >
+                ‹
+              </button>
+            </div>
+
+            <div className="bg-sky-950/60 border border-sky-800/30 rounded-xl p-2.5 text-center">
+              <p className="text-[11px] text-sky-300/60">Code sent to</p>
+              <p className="text-xs font-semibold text-sky-200 truncate">{forgotEmail}</p>
+            </div>
+
+            <div>
+              <label className="text-xs text-sky-300/60 mb-1.5 block font-medium">6-Digit Recovery Code</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={forgotOtp}
+                onChange={e => setForgotOtp(e.target.value.replace(/\D/g, ''))}
+                autoFocus
+                placeholder="• • • • • •"
+                className={`${inputCls} text-center tracking-[12px] text-xl font-mono font-bold`}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-sky-300/60 mb-1.5 block font-medium">New Password</label>
+              <div className="relative">
+                <input
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  type={showNewPassword ? "text" : "password"}
+                  placeholder="Min 6 characters"
+                  required
+                  className={`${inputCls} pr-12`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(p => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-sky-300/50 hover:text-sky-200 cursor-pointer text-sm transition-colors"
+                  tabIndex={-1}
+                >
+                  {showNewPassword ? "🙈" : "👁️"}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-sky-300/60 mb-1.5 block font-medium">Confirm New Password</label>
+              <input
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                type={showNewPassword ? "text" : "password"}
+                placeholder="Repeat new password"
+                required
+                className={inputCls}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting || forgotOtp.length !== 6 || !newPassword}
+              className="py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-semibold text-sm cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-emerald-600/25 press-active transition-all"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  Updating Password...
+                </span>
+              ) : "Update Password ✓"}
+            </button>
+
+            <div className="flex items-center justify-between text-xs pt-1 border-t border-sky-900/30">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (resendCooldown > 0) return;
+                  const res = await forgotPassword(forgotEmail);
+                  if (res?.success) setResendCooldown(60);
+                }}
+                disabled={resendCooldown > 0}
+                className="text-sky-400/70 hover:text-sky-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+              >
+                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "↺ Resend Code"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsForgotPassword(false);
+                  setForgotStep(1);
+                }}
+                className="text-sky-400 hover:text-sky-300 cursor-pointer transition-colors"
+              >
+                Back to Login →
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
@@ -283,7 +531,22 @@ const LoginPage = () => {
               </div>
 
               <div>
-                <label className="text-xs text-sky-300/60 mb-1.5 block font-medium">Password</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs text-sky-300/60 block font-medium">Password</label>
+                  {!isSignup && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotEmail(email);
+                        setIsForgotPassword(true);
+                        setForgotStep(1);
+                      }}
+                      className="text-[11px] text-sky-400 hover:text-sky-300 font-medium cursor-pointer transition-colors"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <input
                     value={password}
