@@ -28,9 +28,13 @@ import { createClient } from "redis";
 
 
 
-// Allowed Origins for CORS lockdown
+// Allowed Origins for CORS lockdown (includes live production URL and local dev ports)
 const allowedOrigins = [
     "https://gameconnect.app",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:3000",
+    "http://localhost:4173",
     ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL] : [])
 ];
 
